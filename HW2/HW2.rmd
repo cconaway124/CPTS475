@@ -1,0 +1,137 @@
+---
+title: "CptS 475 HW2"
+date: "September 4th, 2023"
+author: Chase Conaway
+pdf_document: default
+---
+# Homework 2: R Basics and Exploratory Data Analysis
+
+## Question 1: Red wine quality
+
+Let's load the library ggplot2 first.
+```{r}
+# load the ggplot2 library
+library(ggplot2)
+```
+
+Next, we can load the dataset winequality.csv into an object we can use for the whole question.
+
+### Part a: Loading the winequality csv
+```{r}
+redwine <- read.csv('./winequality-red.csv')
+head(redwine)
+str(redwine)
+```
+
+We load the table and see that our data looks good. Nice.
+
+### Part b: Mean quality and alcohol levels
+
+```{r}
+meanQuality <- mean(redwine$quality)
+meanAlcContent <- mean(redwine$alcohol)
+meanQuality
+meanAlcContent
+```
+
+### Part c: Scatterplot: density vs residual sugar
+
+```{r}
+plot(log(redwine$density), log(redwine$residual_sugar), xlab="Density", ylab="Residual Sugar", 
+            main="Density vs. Residual Sugar")
+```
+
+We plotted the log values of both the density and residual_sugar. The log values help the relationship become a little clearer.
+
+We see that a higher density is somewhat correlated with a higher residual sugar content, which, makes sense. If there is more sugar in the wine, we are raising the density of it by having more stuff in it.
+
+### Part d: High and Medium Alcohol
+
+```{r}
+alcoholLevels <- c("Medium", "High")
+
+# cut the alc content into levels based on if they are > 11 or not and add to the dataframe
+redwine$ALevels <- as.factors(cut(redwine$alcohol, breaks=c(0, 11, 1000), labels=alcoholLevels))
+redwine$StoCl <- redwine$sulphates / redwine$chlorides
+head(redwine)
+
+ggplot(data=redwine, aes(x=ALevels, y=StoCl, fill=ALevels)) + 
+    geom_boxplot(alpha=0.3) + 
+    theme_minimal() + 
+    labs(x="Alcohol Content", y="Sulphate to Chlorides ratio", title="Alcohol Content Boxplot", 
+        caption="Red wine data") + 
+    theme(plot.title = element_text(hjust = 0.5), 
+        axis.text.x = element_text(angle = 45, hjust = 0.8))
+
+sum(redwine$ALevels == "High")
+```
+
+### Part e: Fixed acidity histogram
+
+```{r}
+highA <- hist(redwine$fixed_acidity[redwine$ALevels == "High"], breaks=50, plot=FALSE)
+mediumA <- hist(redwine$fixed_acidity[redwine$ALevels == "Medium"], breaks=50, plot=FALSE)
+plot(mediumA, col=rgb(0,1,0, 1/4), xlab="Fixed Acidity", main="Fixed acidity frequencies")
+plot(highA, col=rgb(0,0,1,1/4), add=T)
+legend("topright", c("High", "Medium"), col=c(rgb(0,0,1,1/4), rgb(0,1,0,1/4)), lwd=10)
+```
+
+### Part f: Two more plots
+
+First plot: volatile acidity vs total sulfur dioxide 
+I am unsure what this is in wine, but I hypothesize there will be almost no correlation
+```{r}
+reg <- lm(redwine$volatile_acidity ~ redwine$total_sulfur_dioxide)
+reg
+ggplot(redwine, aes(x=log(volatile_acidity), y=log(total_sulfur_dioxide), col=volatile_acidity)) + 
+geom_point() +
+geom_abline(intercept=0.5085, slope=0.004163) +
+scale_colour_gradient(low="#eb4034", high="#4430b8")
+```
+
+I went ahead and added the line to the plot, but the slope is almost 0, which indicates 0 relationship.
+
+Second plot: ph and total sulfur dioxide
+I predict that if SO2 is acidic, the wine will have a higher pH, and if it is basic, it will be lower.
+```{r}
+reg <- lm(redwine$pH ~ redwine$total_sulfur_dioxide)
+coeff <- coefficients(reg)
+ggplot(redwine, aes(x=pH, y=total_sulfur_dioxide, col=pH)) +
+geom_point() + 
+geom_abline(intercept=coeff[1], slope=coeff[2], size=2) +
+scale_colour_gradient(low="#eb4034", high="#4430b8")
+```
+
+My hypothesis was wrong, there is no correlation, once again.
+
+## Question 2: Forest fires
+
+First let's get our csv into an objext we can use
+
+```{r}
+forestfires <- read.csv("./forestfires.csv")
+head(forestfires)
+str(forestfires)
+```
+
+### Part a: Qualitative and quantitative predictors
+
+Month and day are qualitative. They let us know the month and day the fire started. Everything else is qualitative in nature, describing conditions of the environment numerically.
+
+### Part b: Range, mean, and standard deviation of each quantitative predictor
+
+```{r}
+# Convert DC to numeric type
+forestfires$DC <- as.numeric(forestfires$DC)
+for (column in colnames(forestfires)) {
+    print(column)
+    if (is.numeric(forestfires[[column]])) {
+        cat("Mean: ", as.character(mean(forestfires[[column]], na.rm=TRUE)), "\n")
+        cat("Standard deviation: ", as.character(sd(forestfires[[column]], na.rm=TRUE)), "\n")
+        cat("Range: ", as.character(range(forestfires[[column]], na.rm=TRUE)), "\n")
+    }
+}
+
+numOfFiresPerMonth <- table(forestfires$month)
+cat("Month with the max number of fires:", names(which.max(numOfFiresPerMonth)), "with", max(numOfFiresPerMonth[2]), "fires\n")
+```
